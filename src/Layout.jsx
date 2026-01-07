@@ -1,0 +1,309 @@
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { 
+  Folder, LogOut, User, ChevronDown, Settings, Key, 
+  MessageSquareText, Map, HeadphonesIcon, Menu, X 
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { base44 } from '@/api/base44Client';
+import { createPageUrl } from '@/utils';
+import { cn } from '@/lib/utils';
+
+const navItems = [
+  { name: 'Feedback', icon: MessageSquareText, page: 'Feedback' },
+  { name: 'Roadmap', icon: Map, page: 'Roadmap' },
+  { name: 'Support', icon: HeadphonesIcon, page: 'Support', requiresSupport: true },
+];
+
+export default function Layout({ children, currentPageName }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [user, setUser] = useState(null);
+  const [workspace, setWorkspace] = useState(null);
+  const [workspaces, setWorkspaces] = useState([]);
+  const [role, setRole] = useState('viewer');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Pages that don't need workspace context
+  const noWorkspacePages = ['WorkspaceSelector'];
+  const needsWorkspace = !noWorkspacePages.includes(currentPageName);
+
+  useEffect(() => {
+    loadContext();
+  }, [currentPageName]);
+
+  const loadContext = async () => {
+    try {
+      const currentUser = await base44.auth.me();
+      setUser(currentUser);
+
+      if (needsWorkspace) {
+        const storedWorkspace = sessionStorage.getItem('selectedWorkspace');
+        const storedRole = sessionStorage.getItem('currentRole');
+        
+        if (storedWorkspace) {
+          setWorkspace(JSON.parse(storedWorkspace));
+          setRole(storedRole || 'viewer');
+          
+          // Load all workspaces for switcher
+          const roles = await base44.entities.WorkspaceRole.filter({ user_id: currentUser.id });
+          if (roles.length > 0) {
+            const workspaceIds = [...new Set(roles.map(r => r.workspace_id))];
+            const wsData = await Promise.all(
+              workspaceIds.map(async (id) => {
+                const results = await base44.entities.Workspace.filter({ id });
+                return results[0];
+              })
+            );
+            setWorkspaces(wsData.filter(w => w && w.status === 'active'));
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load context:', error);
+    }
+  };
+
+  const handleWorkspaceSwitch = (ws) => {
+    sessionStorage.setItem('selectedWorkspaceId', ws.id);
+    sessionStorage.setItem('selectedWorkspace', JSON.stringify(ws));
+    setWorkspace(ws);
+    navigate(createPageUrl('Feedback'));
+  };
+
+  const handleLogout = () => {
+    sessionStorage.clear();
+    base44.auth.logout();
+  };
+
+  const isActive = (page) => {
+    return currentPageName === page;
+  };
+
+  const isAdmin = role === 'admin';
+  const isStaff = ['support', 'admin'].includes(role);
+
+  // No layout for workspace selector
+  if (currentPageName === 'WorkspaceSelector') {
+    return children;
+  }
+
+  // Filter nav items based on permissions
+  const visibleNavItems = navItems.filter(item => {
+    if (item.requiresSupport && !workspace?.support_enabled) return false;
+    return true;
+  });
+
+  return (
+    <div className="min-h-screen bg-slate-50">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-white border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-16">
+            {/* Left: Logo & Workspace Switcher */}
+            <div className="flex items-center gap-4">
+              {workspace ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-auto p-2 hover:bg-slate-100">
+                      <div className="flex items-center gap-3">
+                        <div className="p-1.5 bg-slate-900 rounded-lg">
+                          <Folder className="h-4 w-4 text-white" />
+                        </div>
+                        <span className="font-semibold text-slate-900 hidden sm:inline">
+                          {workspace.name}
+                        </span>
+                        <ChevronDown className="h-4 w-4 text-slate-400" />
+                      </div>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-64">
+                    {workspaces.map((ws) => (
+                      <DropdownMenuItem 
+                        key={ws.id} 
+                        onClick={() => handleWorkspaceSwitch(ws)}
+                        className="cursor-pointer"
+                      >
+                        <Folder className="h-4 w-4 mr-2 text-slate-500" />
+                        <span>{ws.name}</span>
+                        {ws.id === workspace.id && (
+                          <span className="ml-auto text-xs text-slate-400">Current</span>
+                        )}
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to={createPageUrl('WorkspaceSelector')} className="cursor-pointer">
+                        View all workspaces
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-slate-900 rounded-lg">
+                    <Folder className="h-4 w-4 text-white" />
+                  </div>
+                  <span className="font-semibold text-slate-900">Portal</span>
+                </div>
+              )}
+
+              {/* Desktop Navigation */}
+              <nav className="hidden md:flex items-center gap-1 ml-6">
+                {visibleNavItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(item.page);
+                  
+                  return (
+                    <Link
+                      key={item.page}
+                      to={createPageUrl(item.page)}
+                      className={cn(
+                        'flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                        active 
+                          ? 'bg-slate-100 text-slate-900' 
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {item.name}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+
+            {/* Right: User menu & Admin links */}
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <div className="hidden md:flex items-center gap-1">
+                  <Link to={createPageUrl('ApiDocs')}>
+                    <Button variant="ghost" size="sm" className="text-slate-600">
+                      <Key className="h-4 w-4 mr-2" />
+                      API
+                    </Button>
+                  </Link>
+                  <Link to={createPageUrl('WorkspaceSettings')}>
+                    <Button variant="ghost" size="sm" className="text-slate-600">
+                      <Settings className="h-4 w-4 mr-2" />
+                      Settings
+                    </Button>
+                  </Link>
+                </div>
+              )}
+
+              {user && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-full bg-slate-200 flex items-center justify-center">
+                        <User className="h-4 w-4 text-slate-600" />
+                      </div>
+                      <span className="hidden sm:inline text-sm text-slate-600">
+                        {user.email}
+                      </span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <div className="px-2 py-1.5 text-xs text-slate-500">
+                      Role: {role.charAt(0).toUpperCase() + role.slice(1)}
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-600">
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Sign Out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
+              {/* Mobile menu button */}
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm" className="md:hidden">
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-72">
+                  <div className="flex flex-col h-full">
+                    <div className="space-y-1 py-4">
+                      {visibleNavItems.map((item) => {
+                        const Icon = item.icon;
+                        const active = isActive(item.page);
+                        
+                        return (
+                          <Link
+                            key={item.page}
+                            to={createPageUrl(item.page)}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className={cn(
+                              'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all',
+                              active 
+                                ? 'bg-slate-100 text-slate-900' 
+                                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                            )}
+                          >
+                            <Icon className="h-5 w-5" />
+                            {item.name}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                    
+                    {isAdmin && (
+                      <>
+                        <div className="border-t border-slate-200 pt-4 mt-2">
+                          <p className="px-4 text-xs font-medium text-slate-400 uppercase mb-2">Admin</p>
+                          <Link
+                            to={createPageUrl('ApiDocs')}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-slate-600 hover:bg-slate-50"
+                          >
+                            <Key className="h-5 w-5" />
+                            API Documentation
+                          </Link>
+                          <Link
+                            to={createPageUrl('WorkspaceSettings')}
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-slate-600 hover:bg-slate-50"
+                          >
+                            <Settings className="h-5 w-5" />
+                            Settings
+                          </Link>
+                        </div>
+                      </>
+                    )}
+                    
+                    <div className="mt-auto border-t border-slate-200 pt-4">
+                      <Button 
+                        variant="ghost" 
+                        onClick={handleLogout}
+                        className="w-full justify-start text-red-600 hover:bg-red-50 hover:text-red-700"
+                      >
+                        <LogOut className="h-5 w-5 mr-3" />
+                        Sign Out
+                      </Button>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        {children}
+      </main>
+    </div>
+  );
+}
