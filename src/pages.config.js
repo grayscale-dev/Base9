@@ -2,6 +2,8 @@ import WorkspaceSelector from './pages/WorkspaceSelector';
 import Feedback from './pages/Feedback';
 import Roadmap from './pages/Roadmap';
 import Support from './pages/Support';
+import WorkspaceSettings from './pages/WorkspaceSettings';
+import ApiDocs from './pages/ApiDocs';
 
 
 export const PAGES = {
@@ -9,6 +11,8 @@ export const PAGES = {
     "Feedback": Feedback,
     "Roadmap": Roadmap,
     "Support": Support,
+    "WorkspaceSettings": WorkspaceSettings,
+    "ApiDocs": ApiDocs,
 }
 
 export const pagesConfig = {
