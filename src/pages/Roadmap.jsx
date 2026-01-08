@@ -27,7 +27,7 @@ export default function Roadmap() {
     const storedRole = sessionStorage.getItem('currentRole');
     
     if (!storedWorkspace) {
-      navigate(createPageUrl('WorkspaceSelector'));
+      navigate(createPageUrl('Workspaces'));
       return;
     }
     
@@ -35,6 +35,17 @@ export default function Roadmap() {
     setRole(storedRole || 'viewer');
     loadData();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const itemId = params.get('item');
+    if (itemId && items.length > 0) {
+      const item = items.find(r => r.id === itemId);
+      if (item) {
+        handleItemClick(item);
+      }
+    }
+  }, [items]);
 
   const loadData = async () => {
     try {
