@@ -89,6 +89,16 @@ export default function JoinWorkspace() {
       return true;
     }
 
+    // Check if there's an explicit WorkspaceRole assigned to this email (pre-authorized)
+    const emailRoles = await base44.entities.WorkspaceRole.filter({
+      workspace_id: ws.id,
+      email: user.email
+    });
+
+    if (emailRoles.length > 0) {
+      return true;
+    }
+
     // Check access rules
     const rules = await base44.entities.AccessRule.filter({
       workspace_id: ws.id,
@@ -122,14 +132,31 @@ export default function JoinWorkspace() {
 
     setJoining(true);
     try {
-      // Create WorkspaceRole to add them as a member
-      await base44.entities.WorkspaceRole.create({
+      // Check if there's a pre-existing role assignment by email
+      const emailRoles = await base44.entities.WorkspaceRole.filter({
         workspace_id: workspace.id,
-        user_id: user.id,
-        email: user.email,
-        role: 'viewer',
-        assigned_via: 'explicit'
+        email: user.email
       });
+
+      let assignedRole = 'viewer';
+      
+      if (emailRoles.length > 0) {
+        // Update existing role with actual user_id
+        const existingRole = emailRoles[0];
+        assignedRole = existingRole.role;
+        await base44.entities.WorkspaceRole.update(existingRole.id, {
+          user_id: user.id
+        });
+      } else {
+        // Create new WorkspaceRole
+        await base44.entities.WorkspaceRole.create({
+          workspace_id: workspace.id,
+          user_id: user.id,
+          email: user.email,
+          role: 'viewer',
+          assigned_via: 'explicit'
+        });
+      }
 
       // Ensure user has TenantMember record
       const tenantMembers = await base44.entities.TenantMember.filter({
@@ -150,7 +177,7 @@ export default function JoinWorkspace() {
       // Navigate to workspace with their assigned role
       sessionStorage.setItem('selectedWorkspaceId', workspace.id);
       sessionStorage.setItem('selectedWorkspace', JSON.stringify(workspace));
-      sessionStorage.setItem('currentRole', 'viewer');
+      sessionStorage.setItem('currentRole', assignedRole);
       navigate(createPageUrl('Workspaces'));
     } catch (err) {
       console.error('Failed to join workspace:', err);
