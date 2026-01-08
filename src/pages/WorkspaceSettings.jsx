@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Settings, Users, Key, Shield, Plus, Trash2, 
-  Save, ChevronRight, Mail, Globe, Lock 
+  Save, ChevronRight, Mail, Globe, Lock, Copy, Check 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +61,7 @@ export default function WorkspaceSettings() {
   const [newMemberRole, setNewMemberRole] = useState('viewer');
   const [newRulePattern, setNewRulePattern] = useState('');
   const [newRuleRole, setNewRuleRole] = useState('viewer');
+  const [copiedUrl, setCopiedUrl] = useState(false);
 
   useEffect(() => {
     const storedWorkspace = sessionStorage.getItem('selectedWorkspace');
@@ -201,6 +202,13 @@ export default function WorkspaceSettings() {
     }
   };
 
+  const handleCopyUrl = () => {
+    const url = `${window.location.origin}${createPageUrl('PublicWorkspaceSelector')}?workspace=${workspace.slug}`;
+    navigator.clipboard.writeText(url);
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -259,6 +267,27 @@ export default function WorkspaceSettings() {
                   className="mt-1.5 max-w-md"
                   placeholder="Optional description"
                 />
+              </div>
+              <div>
+                <Label>Workspace URL</Label>
+                <div className="mt-1.5 max-w-md flex gap-2">
+                  <Input 
+                    value={`${window.location.origin}${createPageUrl('PublicWorkspaceSelector')}?workspace=${workspace?.slug || ''}`}
+                    readOnly
+                    className="font-mono text-sm"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={handleCopyUrl}
+                    className="shrink-0"
+                  >
+                    {copiedUrl ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  Share this URL to allow users to access your workspace
+                </p>
               </div>
             </CardContent>
           </Card>
