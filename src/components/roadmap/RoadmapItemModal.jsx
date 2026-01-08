@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, Calendar, MessageSquare, Plus, Edit2, Trash2, Send } from 'lucide-react';
+import { X, Calendar, MessageSquare, Plus, Edit2, Trash2, Send, Sparkles } from 'lucide-react';
+import { createPageUrl } from '@/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,6 +43,7 @@ export default function RoadmapItemModal({
   const [saving, setSaving] = useState(false);
   const [postingUpdate, setPostingUpdate] = useState(false);
   const [addToChangelog, setAddToChangelog] = useState(false);
+  const [changelogEntry, setChangelogEntry] = useState(null);
 
   useEffect(() => {
     if (item) {
@@ -49,10 +51,25 @@ export default function RoadmapItemModal({
       setDescription(item.description || '');
       setStatus(item.status || 'planned');
       setTargetQuarter(item.target_quarter || '');
+      loadChangelogEntry();
     }
     setEditing(isNew);
     setAddToChangelog(false);
   }, [item, isNew]);
+
+  const loadChangelogEntry = async () => {
+    if (!item?.id) return;
+    try {
+      const entries = await base44.entities.ChangelogEntry.filter({
+        roadmap_item_id: item.id
+      });
+      if (entries.length > 0) {
+        setChangelogEntry(entries[0]);
+      }
+    } catch (error) {
+      console.error('Failed to load changelog:', error);
+    }
+  };
 
   const handleSave = async () => {
     if (!title) return;
@@ -271,13 +288,30 @@ export default function RoadmapItemModal({
                   <h4 className="text-sm font-medium text-slate-700 mb-2">Linked Feedback</h4>
                   <div className="space-y-2">
                     {linkedFeedback.map(fb => (
-                      <div key={fb.id} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+                      <a
+                        key={fb.id}
+                        href={`${window.location.origin}/feedback?id=${fb.id}`}
+                        className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+                      >
                         <MessageSquare className="h-4 w-4 text-slate-400" />
                         <span className="text-sm text-slate-600">{fb.title}</span>
-                      </div>
+                      </a>
                     ))}
                   </div>
                 </div>
+              )}
+
+              {/* Changelog Link */}
+              {changelogEntry && (
+                <a
+                  href={`${window.location.origin}${createPageUrl('Changelog')}`}
+                  className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors"
+                >
+                  <Sparkles className="h-4 w-4 text-purple-600" />
+                  <span className="text-sm text-purple-900 font-medium">
+                    View in Changelog →
+                  </span>
+                </a>
               )}
 
               {/* Updates */}

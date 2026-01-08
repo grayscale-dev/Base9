@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Calendar, Plus } from 'lucide-react';
+import { Sparkles, Calendar, Plus, Map } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { format } from 'date-fns';
@@ -54,7 +54,31 @@ export default function Changelog() {
         { workspace_id: workspaceId, visibility: 'public' },
         '-release_date'
       );
-      setEntries(changelogEntries);
+
+      // Load linked roadmap items and feedback types
+      const entriesWithLinks = await Promise.all(
+        changelogEntries.map(async (entry) => {
+          let roadmapItem = null;
+          let feedbackType = null;
+
+          if (entry.roadmap_item_id) {
+            const items = await base44.entities.RoadmapItem.filter({ id: entry.roadmap_item_id });
+            roadmapItem = items[0];
+
+            if (roadmapItem) {
+              // Find linked feedback to get the type
+              const feedback = await base44.entities.Feedback.filter({ roadmap_item_id: roadmapItem.id });
+              if (feedback.length > 0) {
+                feedbackType = feedback[0].type;
+              }
+            }
+          }
+
+          return { ...entry, roadmapItem, feedbackType };
+        })
+      );
+
+      setEntries(entriesWithLinks);
     } catch (error) {
       console.error('Failed to load changelog:', error);
     } finally {
@@ -153,6 +177,37 @@ export default function Changelog() {
               <p className="text-slate-600 leading-relaxed mb-4">
                 {entry.description}
               </p>
+
+              {/* Type Badge */}
+              {entry.feedbackType && (
+                <div className="mb-4">
+                  {entry.feedbackType === 'question' && (
+                    <Badge variant="purple">❓ Question</Badge>
+                  )}
+                  {entry.feedbackType === 'bug' && (
+                    <Badge variant="danger">🐛 Bug</Badge>
+                  )}
+                  {entry.feedbackType === 'feature_request' && (
+                    <Badge variant="primary">✨ Feature</Badge>
+                  )}
+                  {entry.feedbackType === 'improvement' && (
+                    <Badge variant="success">📈 Improvement</Badge>
+                  )}
+                </div>
+              )}
+
+              {/* Roadmap Link */}
+              {entry.roadmapItem && (
+                <a
+                  href={`${window.location.origin}${createPageUrl('Roadmap')}?item=${entry.roadmap_item_id}`}
+                  className="inline-flex items-center gap-2 px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors mb-4"
+                >
+                  <Map className="h-4 w-4 text-purple-600" />
+                  <span className="text-sm text-purple-900 font-medium">
+                    View on Roadmap →
+                  </span>
+                </a>
+              )}
 
               {/* Tags */}
               {entry.tags && entry.tags.length > 0 && (

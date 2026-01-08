@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Folder, LogOut, User, ChevronDown, Settings, Key, 
-  MessageSquareText, Map, HeadphonesIcon, Menu, X, Sparkles, ArrowLeft 
+  MessageSquareText, Map, HeadphonesIcon, Menu, X, Sparkles, ArrowLeft, BookOpen 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -21,6 +21,7 @@ const navItems = [
   { name: 'Feedback', icon: MessageSquareText, page: 'Feedback' },
   { name: 'Roadmap', icon: Map, page: 'Roadmap' },
   { name: 'Changelog', icon: Sparkles, page: 'Changelog' },
+  { name: 'Docs', icon: BookOpen, page: 'Docs' },
   { name: 'Support', icon: HeadphonesIcon, page: 'Support', requiresSupport: true },
 ];
 
