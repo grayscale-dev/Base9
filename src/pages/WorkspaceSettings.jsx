@@ -203,7 +203,7 @@ export default function WorkspaceSettings() {
   };
 
   const handleCopyUrl = () => {
-    const url = `${window.location.origin}${createPageUrl('PublicWorkspaceSelector')}?workspace=${workspace.slug}`;
+    const url = `${window.location.origin}${createPageUrl('JoinWorkspace')}?workspace=${workspace.slug}`;
     navigator.clipboard.writeText(url);
     setCopiedUrl(true);
     setTimeout(() => setCopiedUrl(false), 2000);
@@ -272,7 +272,7 @@ export default function WorkspaceSettings() {
                 <Label>Workspace URL</Label>
                 <div className="mt-1.5 max-w-md flex gap-2">
                   <Input 
-                    value={`${window.location.origin}${createPageUrl('PublicWorkspaceSelector')}?workspace=${workspace?.slug || ''}`}
+                    value={`${window.location.origin}${createPageUrl('JoinWorkspace')}?workspace=${workspace?.slug || ''}`}
                     readOnly
                     className="font-mono text-sm"
                   />
@@ -286,7 +286,7 @@ export default function WorkspaceSettings() {
                   </Button>
                 </div>
                 <p className="text-xs text-slate-500 mt-1">
-                  Share this URL to allow users to access your workspace
+                  Share this URL to allow users to join your workspace
                 </p>
               </div>
             </CardContent>
