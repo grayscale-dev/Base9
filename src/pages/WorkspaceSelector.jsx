@@ -47,7 +47,37 @@ export default function WorkspaceSelector() {
       setUser(currentUser);
 
       // Check if user is tenant admin
-      const tenantMembers = await base44.entities.TenantMember.filter({ user_id: currentUser.id });
+      let tenantMembers = await base44.entities.TenantMember.filter({ user_id: currentUser.id });
+      
+      // If user doesn't have a TenantMember record, create one
+      if (tenantMembers.length === 0) {
+        // Get or create a default tenant
+        let tenants = await base44.entities.Tenant.filter({});
+        let tenant;
+        
+        if (tenants.length === 0) {
+          // Create a default tenant if none exists
+          tenant = await base44.entities.Tenant.create({
+            name: 'Default Organization',
+            slug: 'default',
+            status: 'active'
+          });
+        } else {
+          tenant = tenants[0];
+        }
+        
+        // Create TenantMember with admin privileges for users accessing admin portal
+        const newMember = await base44.entities.TenantMember.create({
+          tenant_id: tenant.id,
+          user_id: currentUser.id,
+          email: currentUser.email,
+          is_tenant_admin: currentUser.role === 'admin', // Make tenant admin if they're system admin
+          status: 'active'
+        });
+        
+        tenantMembers = [newMember];
+      }
+      
       const tenantAdmin = tenantMembers.find(tm => tm.is_tenant_admin);
       setIsTenantAdmin(!!tenantAdmin);
 
