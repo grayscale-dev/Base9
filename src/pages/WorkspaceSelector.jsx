@@ -241,7 +241,9 @@ export default function WorkspaceSelector() {
           <EmptyState
             icon={Folder}
             title="No workspaces available"
-            description="You don't have access to any workspaces yet. Contact your administrator to request access."
+            description={isTenantAdmin ? "Get started by creating your first workspace." : "You don't have access to any workspaces yet. Contact your administrator to request access."}
+            action={isTenantAdmin ? () => setShowCreateModal(true) : undefined}
+            actionLabel={isTenantAdmin ? "Create Workspace" : undefined}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
