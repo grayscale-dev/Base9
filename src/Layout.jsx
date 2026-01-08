@@ -99,12 +99,11 @@ export default function Layout({ children, currentPageName }) {
     return currentPageName === page;
   };
 
-  const isPublicAccess = sessionStorage.getItem('isPublicAccess') === 'true';
-  const isAdmin = role === 'admin' && !isPublicAccess;
-  const isStaff = ['support', 'admin'].includes(role) && !isPublicAccess;
+  const isAdmin = role === 'admin';
+  const isStaff = ['support', 'admin'].includes(role);
 
-  // No layout for landing, workspace selectors, or join page
-  if (['Landing', 'WorkspaceSelector', 'PublicWorkspaceSelector', 'JoinWorkspace', 'CustomerHome'].includes(currentPageName)) {
+  // No layout for workspaces hub or join page
+  if (['Workspaces', 'JoinWorkspace'].includes(currentPageName)) {
     return children;
   }
 
