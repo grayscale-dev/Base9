@@ -51,6 +51,9 @@ export default function WorkspaceSettings() {
   const [visibility, setVisibility] = useState('restricted');
   const [supportEnabled, setSupportEnabled] = useState(true);
   const [settings, setSettings] = useState({});
+  const [logoUrl, setLogoUrl] = useState('');
+  const [primaryColor, setPrimaryColor] = useState('#0f172a');
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   
   // Access management
   const [members, setMembers] = useState([]);
@@ -80,6 +83,8 @@ export default function WorkspaceSettings() {
     setVisibility(ws.visibility || 'restricted');
     setSupportEnabled(ws.support_enabled !== false);
     setSettings(ws.settings || {});
+    setLogoUrl(ws.logo_url || '');
+    setPrimaryColor(ws.primary_color || '#0f172a');
     
     loadAccessData(ws.id);
   }, []);
@@ -109,11 +114,13 @@ export default function WorkspaceSettings() {
         description,
         visibility,
         support_enabled: supportEnabled,
-        settings
+        settings,
+        logo_url: logoUrl,
+        primary_color: primaryColor
       });
       
       // Update session storage
-      const updatedWorkspace = { ...workspace, name, description, visibility, support_enabled: supportEnabled, settings };
+      const updatedWorkspace = { ...workspace, name, description, visibility, support_enabled: supportEnabled, settings, logo_url: logoUrl, primary_color: primaryColor };
       sessionStorage.setItem('selectedWorkspace', JSON.stringify(updatedWorkspace));
       setWorkspace(updatedWorkspace);
     } catch (error) {
@@ -205,6 +212,21 @@ export default function WorkspaceSettings() {
     setTimeout(() => setCopiedUrl(false), 2000);
   };
 
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    setUploadingLogo(true);
+    try {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setLogoUrl(file_url);
+    } catch (error) {
+      console.error('Failed to upload logo:', error);
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -263,6 +285,48 @@ export default function WorkspaceSettings() {
                   className="mt-1.5 max-w-md"
                   placeholder="Optional description"
                 />
+              </div>
+              <div>
+                <Label>Workspace Logo</Label>
+                <div className="flex items-center gap-4 mt-1.5">
+                  {logoUrl && (
+                    <img src={logoUrl} alt="Logo" className="h-12 w-12 object-contain rounded-lg border border-slate-200" />
+                  )}
+                  <label className="cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      className="hidden"
+                    />
+                    <Button variant="outline" size="sm" asChild>
+                      <span>{uploadingLogo ? 'Uploading...' : (logoUrl ? 'Change Logo' : 'Upload Logo')}</span>
+                    </Button>
+                  </label>
+                  {logoUrl && (
+                    <Button variant="ghost" size="sm" onClick={() => setLogoUrl('')}>
+                      Remove
+                    </Button>
+                  )}
+                </div>
+              </div>
+              <div>
+                <Label>Primary Brand Color</Label>
+                <div className="flex items-center gap-3 mt-1.5">
+                  <input
+                    type="color"
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    className="h-10 w-20 rounded border border-slate-200 cursor-pointer"
+                  />
+                  <Input
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    placeholder="#0f172a"
+                    className="max-w-32 font-mono"
+                  />
+                  <span className="text-sm text-slate-500">Used for buttons and accents</span>
+                </div>
               </div>
               <div>
                 <Label>Workspace URL</Label>

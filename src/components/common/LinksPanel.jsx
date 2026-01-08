@@ -13,7 +13,8 @@ const linkTypeConfig = {
   feedback: { icon: MessageSquare, label: 'Feedback', color: 'text-blue-600', page: 'Feedback', param: 'id' },
   roadmap: { icon: Map, label: 'Roadmap', color: 'text-purple-600', page: 'Roadmap', param: 'item' },
   changelog: { icon: Sparkles, label: 'Changelog', color: 'text-green-600', page: 'Changelog', param: 'entry' },
-  docs: { icon: BookOpen, label: 'Docs', color: 'text-orange-600', page: 'Docs', param: 'doc' }
+  docs: { icon: BookOpen, label: 'Docs', color: 'text-orange-600', page: 'Docs', param: 'doc' },
+  support: { icon: MessageSquare, label: 'Support', color: 'text-red-600', page: 'Support', param: 'thread' }
 };
 
 export default function LinksPanel({ 
@@ -67,6 +68,13 @@ export default function LinksPanel({
       data.docs = items.filter(Boolean);
     }
     
+    if (links?.support_thread_ids?.length) {
+      const items = await Promise.all(
+        links.support_thread_ids.map(id => base44.entities.SupportThread.filter({ id }).then(r => r[0]))
+      );
+      data.support = items.filter(Boolean);
+    }
+    
     setLinkedData(data);
   };
 
@@ -92,6 +100,10 @@ export default function LinksPanel({
         break;
       case 'docs':
         items = await base44.entities.DocPage.filter({ workspace_id: workspaceId, type: 'page' }, 'order');
+        break;
+      case 'support':
+        items = await base44.entities.SupportThread.filter({ workspace_id: workspaceId }, '-created_date');
+        items = items.map(t => ({ ...t, title: t.subject }));
         break;
     }
     setAvailableItems(items);
@@ -137,7 +149,8 @@ export default function LinksPanel({
       feedback: 'Feedback',
       roadmap: 'RoadmapItem',
       changelog: 'ChangelogEntry',
-      docs: 'DocPage'
+      docs: 'DocPage',
+      support: 'SupportThread'
     };
 
     await base44.entities[entityMap[itemType]].update(itemId, updates);
@@ -212,7 +225,7 @@ export default function LinksPanel({
                   className="flex items-center gap-2 flex-1 hover:text-slate-900 transition-colors"
                 >
                   <Icon className={`h-3 w-3 ${config.color}`} />
-                  <span className="text-sm text-slate-700">{item.title}</span>
+                  <span className="text-sm text-slate-700">{item.title || item.subject}</span>
                 </a>
                 {isStaff && (
                   <Button

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Send, Paperclip, X, User, Shield, Clock, Lock } from 'lucide-react';
+import { ArrowLeft, Send, Paperclip, X, User, Shield, Clock, Lock, UserPlus } from 'lucide-react';
+import LinksPanel from '@/components/common/LinksPanel';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -46,6 +47,9 @@ export default function SupportThreadDetail({
   const [sending, setSending] = useState(false);
   const [status, setStatus] = useState(thread.status);
   const [priority, setPriority] = useState(thread.priority || 'medium');
+  const [participants, setParticipants] = useState(thread.participants || []);
+  const [showAddParticipant, setShowAddParticipant] = useState(false);
+  const [participantEmail, setParticipantEmail] = useState('');
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -131,6 +135,36 @@ export default function SupportThreadDetail({
     }
   };
 
+  const handleAddParticipant = async () => {
+    if (!participantEmail.trim()) return;
+    
+    try {
+      const roles = await base44.entities.WorkspaceRole.filter({ 
+        workspace_id: thread.workspace_id, 
+        email: participantEmail 
+      });
+      
+      if (roles.length === 0) {
+        alert('User not found in workspace');
+        return;
+      }
+      
+      const userId = roles[0].user_id;
+      const newParticipants = [...new Set([...participants, userId])];
+      
+      await base44.entities.SupportThread.update(thread.id, { 
+        participants: newParticipants 
+      });
+      
+      setParticipants(newParticipants);
+      setParticipantEmail('');
+      setShowAddParticipant(false);
+      onUpdate?.();
+    } catch (error) {
+      console.error('Failed to add participant:', error);
+    }
+  };
+
   // Filter internal notes for non-staff
   const visibleMessages = isStaff 
     ? messages 
@@ -157,6 +191,14 @@ export default function SupportThreadDetail({
         
         {isStaff && (
           <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAddParticipant(!showAddParticipant)}
+            >
+              <UserPlus className="h-4 w-4 mr-2" />
+              Add Participant
+            </Button>
             <Select value={priority} onValueChange={handlePriorityChange}>
               <SelectTrigger className="w-32">
                 <SelectValue />
@@ -180,6 +222,43 @@ export default function SupportThreadDetail({
           </div>
         )}
       </div>
+
+      {/* Add Participant Form */}
+      {showAddParticipant && isStaff && (
+        <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg mb-6">
+          <Input
+            value={participantEmail}
+            onChange={(e) => setParticipantEmail(e.target.value)}
+            placeholder="Enter user email..."
+            onKeyDown={(e) => e.key === 'Enter' && handleAddParticipant()}
+          />
+          <Button onClick={handleAddParticipant} size="sm">
+            Add
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setShowAddParticipant(false)}>
+            Cancel
+          </Button>
+        </div>
+      )}
+
+      {/* Links Panel */}
+      {isStaff && (
+        <div className="mb-6">
+          <LinksPanel
+            workspaceId={thread.workspace_id}
+            itemType="support"
+            itemId={thread.id}
+            links={{
+              feedback_ids: thread.feedback_ids || [],
+              roadmap_item_ids: thread.roadmap_item_ids || [],
+              changelog_entry_ids: thread.changelog_entry_ids || [],
+              doc_page_ids: thread.doc_page_ids || []
+            }}
+            onUpdate={onUpdate}
+            isStaff={isStaff}
+          />
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-4 mb-6 p-4 bg-slate-50 rounded-2xl">
