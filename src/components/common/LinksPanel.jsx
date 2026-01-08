@@ -111,6 +111,7 @@ export default function LinksPanel({
 
     await updateLinks({ [field]: newIds });
     setShowAddModal(false);
+    await loadLinkedData();
   };
 
   const handleRemoveLink = async (type, id) => {
@@ -126,6 +127,7 @@ export default function LinksPanel({
     const newIds = currentIds.filter(i => i !== id);
 
     await updateLinks({ [field]: newIds });
+    await loadLinkedData();
   };
 
   const updateLinks = async (updates) => {
