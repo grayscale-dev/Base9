@@ -127,23 +127,17 @@ export default function WorkspaceSettings() {
     if (!newMemberEmail || !workspace) return;
     
     try {
-      // Check if user exists
-      const users = await base44.entities.User.filter({ email: newMemberEmail });
-      const user = users[0];
-      
-      if (!user) {
-        alert('User not found. They must be registered first.');
-        return;
-      }
+      const currentUser = await base44.auth.me();
       
       // Check for existing role
       const existing = members.find(m => m.email === newMemberEmail);
       if (existing) {
         await base44.entities.WorkspaceRole.update(existing.id, { role: newMemberRole });
       } else {
+        // Create role with placeholder user_id - will be linked when user joins
         await base44.entities.WorkspaceRole.create({
           workspace_id: workspace.id,
-          user_id: user.id,
+          user_id: newMemberEmail, // Use email as placeholder until user registers
           email: newMemberEmail,
           role: newMemberRole,
           assigned_via: 'explicit'
@@ -154,8 +148,10 @@ export default function WorkspaceSettings() {
       setNewMemberRole('viewer');
       setShowAddMember(false);
       loadAccessData(workspace.id);
+      alert(`Access granted to ${newMemberEmail}. They can join using the workspace invite link.`);
     } catch (error) {
       console.error('Failed to add member:', error);
+      alert('Failed to grant access. Please try again.');
     }
   };
 
