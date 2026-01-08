@@ -12,9 +12,17 @@ export default function Landing() {
     sessionStorage.clear();
   }, []);
 
-  const handlePublicAccess = () => {
+  const handleCustomerPortal = async () => {
+    // Customer portal - requires login to see joined workspaces
     sessionStorage.setItem('isPublicAccess', 'true');
-    navigate(createPageUrl('PublicWorkspaceSelector'));
+    
+    try {
+      await base44.auth.me();
+      navigate(createPageUrl('CustomerHome'));
+    } catch (error) {
+      // Not authenticated - redirect to login
+      base44.auth.redirectToLogin(window.location.origin + createPageUrl('CustomerHome'));
+    }
   };
 
   const handleManagementAccess = async () => {
@@ -49,9 +57,9 @@ export default function Landing() {
 
         {/* Two Options */}
         <div className="grid md:grid-cols-2 gap-8">
-          {/* Public Access */}
+          {/* Customer Portal */}
           <button
-            onClick={handlePublicAccess}
+            onClick={handleCustomerPortal}
             className="bg-white/10 backdrop-blur-sm border-2 border-blue-400/30 rounded-2xl p-8 hover:bg-white/15 hover:border-blue-400/50 transition-all text-left group"
           >
             <div className="flex items-center gap-4 mb-6">
