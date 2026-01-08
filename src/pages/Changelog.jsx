@@ -1,28 +1,49 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Calendar } from 'lucide-react';
+import { Sparkles, Calendar, Plus } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { createPageUrl } from '@/utils';
 import { format } from 'date-fns';
 import Badge from '@/components/common/Badge';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import EmptyState from '@/components/common/EmptyState';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 export default function Changelog() {
   const navigate = useNavigate();
   const [workspace, setWorkspace] = useState(null);
+  const [role, setRole] = useState('viewer');
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newEntry, setNewEntry] = useState({
+    title: '',
+    description: '',
+    release_date: new Date().toISOString().split('T')[0]
+  });
 
   useEffect(() => {
     const storedWorkspace = sessionStorage.getItem('selectedWorkspace');
+    const storedRole = sessionStorage.getItem('currentRole');
     
     if (!storedWorkspace) {
-      navigate(createPageUrl('Landing'));
+      navigate(createPageUrl('Workspaces'));
       return;
     }
     
     setWorkspace(JSON.parse(storedWorkspace));
+    setRole(storedRole || 'viewer');
     loadChangelog();
   }, []);
 
@@ -41,6 +62,34 @@ export default function Changelog() {
     }
   };
 
+  const handleCreateEntry = async () => {
+    if (!newEntry.title || !newEntry.release_date) return;
+
+    setCreating(true);
+    try {
+      const workspaceId = sessionStorage.getItem('selectedWorkspaceId');
+      await base44.entities.ChangelogEntry.create({
+        workspace_id: workspaceId,
+        title: newEntry.title,
+        description: newEntry.description,
+        release_date: newEntry.release_date,
+        visibility: 'public'
+      });
+
+      setShowCreateModal(false);
+      setNewEntry({
+        title: '',
+        description: '',
+        release_date: new Date().toISOString().split('T')[0]
+      });
+      loadChangelog();
+    } catch (error) {
+      console.error('Failed to create changelog entry:', error);
+    } finally {
+      setCreating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -49,17 +98,30 @@ export default function Changelog() {
     );
   }
 
+  const isAdmin = role === 'admin';
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 bg-purple-100 rounded-lg">
-          <Sparkles className="h-6 w-6 text-purple-600" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-purple-100 rounded-lg">
+            <Sparkles className="h-6 w-6 text-purple-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Changelog</h1>
+            <p className="text-slate-500 mt-1">See what's new and improved</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Changelog</h1>
-          <p className="text-slate-500 mt-1">See what's new and improved</p>
-        </div>
+        {isAdmin && (
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-slate-900 hover:bg-slate-800"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Entry
+          </Button>
+        )}
       </div>
 
       {/* Changelog Entries */}
