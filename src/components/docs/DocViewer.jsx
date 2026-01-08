@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
 import { format } from 'date-fns';
-import { format } from 'date-fns';
+import LinksPanel from '@/components/common/LinksPanel';
 
-export default function DocViewer({ doc, onRefresh }) {
+export default function DocViewer({ doc, onRefresh, isStaff }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [posting, setPosting] = useState(false);
