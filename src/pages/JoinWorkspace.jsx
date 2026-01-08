@@ -147,12 +147,11 @@ export default function JoinWorkspace() {
         });
       }
 
-      // Navigate to workspace in customer view
-      sessionStorage.setItem('isPublicAccess', 'true');
+      // Navigate to workspace with their assigned role
       sessionStorage.setItem('selectedWorkspaceId', workspace.id);
       sessionStorage.setItem('selectedWorkspace', JSON.stringify(workspace));
       sessionStorage.setItem('currentRole', 'viewer');
-      navigate(createPageUrl('Feedback'));
+      navigate(createPageUrl('Workspaces'));
     } catch (err) {
       console.error('Failed to join workspace:', err);
       setError('Failed to join workspace. Please try again.');
@@ -164,7 +163,6 @@ export default function JoinWorkspace() {
   const handleOpenWorkspace = () => {
     if (!workspace) return;
 
-    sessionStorage.setItem('isPublicAccess', 'true');
     sessionStorage.setItem('selectedWorkspaceId', workspace.id);
     sessionStorage.setItem('selectedWorkspace', JSON.stringify(workspace));
     sessionStorage.setItem('currentRole', 'viewer');
@@ -192,11 +190,11 @@ export default function JoinWorkspace() {
           <h1 className="text-2xl font-bold text-slate-900 mb-2">Unable to Join</h1>
           <p className="text-slate-600 mb-6">{error}</p>
           <Button
-            onClick={() => navigate(createPageUrl('Landing'))}
+            onClick={() => navigate(createPageUrl('Workspaces'))}
             variant="outline"
             className="w-full"
           >
-            Go to Home
+            Back to Workspaces
           </Button>
         </div>
       </div>
@@ -225,11 +223,11 @@ export default function JoinWorkspace() {
               Open Workspace
             </Button>
             <Button
-              onClick={() => navigate(createPageUrl('Landing'))}
+              onClick={() => navigate(createPageUrl('Workspaces'))}
               variant="outline"
               className="w-full"
             >
-              Go to Home
+              Back to Workspaces
             </Button>
           </div>
         </div>
@@ -286,7 +284,7 @@ export default function JoinWorkspace() {
             )}
           </Button>
           <Button
-            onClick={() => navigate(createPageUrl('Landing'))}
+            onClick={() => navigate(createPageUrl('Workspaces'))}
             variant="outline"
             className="w-full"
             disabled={joining}

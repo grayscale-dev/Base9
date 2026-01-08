@@ -34,31 +34,20 @@ export default function Layout({ children, currentPageName }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Pages that don't need workspace context
-  const noWorkspacePages = ['WorkspaceSelector', 'PublicWorkspaceSelector', 'Landing'];
+  const noWorkspacePages = ['Workspaces', 'JoinWorkspace'];
   const needsWorkspace = !noWorkspacePages.includes(currentPageName);
 
   useEffect(() => {
+    // Redirect to workspaces if no workspace is selected
+    if (needsWorkspace && !sessionStorage.getItem('selectedWorkspace')) {
+      navigate(createPageUrl('Workspaces'));
+      return;
+    }
     loadContext();
   }, [currentPageName]);
 
   const loadContext = async () => {
     try {
-      const isPublicAccess = sessionStorage.getItem('isPublicAccess') === 'true';
-      
-      // For public access, don't require authentication
-      if (isPublicAccess) {
-        if (needsWorkspace) {
-          const storedWorkspace = sessionStorage.getItem('selectedWorkspace');
-          const storedRole = sessionStorage.getItem('currentRole');
-          
-          if (storedWorkspace) {
-            setWorkspace(JSON.parse(storedWorkspace));
-            setRole(storedRole || 'viewer');
-          }
-        }
-        return;
-      }
-
       const currentUser = await base44.auth.me();
       setUser(currentUser);
 
@@ -86,14 +75,19 @@ export default function Layout({ children, currentPageName }) {
       }
     } catch (error) {
       console.error('Failed to load context:', error);
+      // If auth fails and we need workspace, redirect to workspaces page
+      if (needsWorkspace) {
+        navigate(createPageUrl('Workspaces'));
+      }
     }
   };
 
   const handleWorkspaceSwitch = (ws) => {
+    const role = workspaces.find(w => w.id === ws.id);
     sessionStorage.setItem('selectedWorkspaceId', ws.id);
     sessionStorage.setItem('selectedWorkspace', JSON.stringify(ws));
     setWorkspace(ws);
-    navigate(createPageUrl('Feedback'));
+    window.location.reload(); // Reload to refresh role context
   };
 
   const handleLogout = () => {
@@ -144,7 +138,7 @@ export default function Layout({ children, currentPageName }) {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start" className="w-64">
-                    {!isPublicAccess && workspaces.map((ws) => (
+                    {workspaces.map((ws) => (
                       <DropdownMenuItem 
                         key={ws.id} 
                         onClick={() => handleWorkspaceSwitch(ws)}
@@ -157,24 +151,13 @@ export default function Layout({ children, currentPageName }) {
                         )}
                       </DropdownMenuItem>
                     ))}
-                    {!isPublicAccess && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem asChild>
-                          <Link to={createPageUrl('WorkspaceSelector')} className="cursor-pointer">
-                            View all workspaces
-                          </Link>
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    {isPublicAccess && (
-                      <DropdownMenuItem asChild>
-                        <Link to={createPageUrl('Landing')} className="cursor-pointer">
-                          <ArrowLeft className="h-4 w-4 mr-2" />
-                          Back to Home
-                        </Link>
-                      </DropdownMenuItem>
-                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to={createPageUrl('Workspaces')} className="cursor-pointer">
+                        <ArrowLeft className="h-4 w-4 mr-2" />
+                        All workspaces
+                      </Link>
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
@@ -213,20 +196,6 @@ export default function Layout({ children, currentPageName }) {
 
             {/* Right: User menu & Admin links */}
             <div className="flex items-center gap-2">
-              {!isPublicAccess && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      sessionStorage.setItem('isPublicAccess', 'true');
-                      navigate(createPageUrl('Feedback'));
-                    }}
-                    className="hidden md:flex"
-                  >
-                    Switch to Customer View
-                  </Button>
-                )}
-
                 {isAdmin && (
                   <div className="hidden md:flex items-center gap-1">
                     <Link to={createPageUrl('ApiDocs')}>
@@ -244,7 +213,7 @@ export default function Layout({ children, currentPageName }) {
                   </div>
                 )}
 
-              {user && !isPublicAccess && (
+              {user && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="sm" className="flex items-center gap-2">
@@ -267,20 +236,6 @@ export default function Layout({ children, currentPageName }) {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              )}
-
-              {isPublicAccess && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => {
-                    sessionStorage.clear();
-                    navigate(createPageUrl('Landing'));
-                  }}
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Home
-                </Button>
               )}
 
               {/* Mobile menu button */}
