@@ -187,13 +187,13 @@ export function BoardProvider({ children }) {
  * Compute permissions based on role and access type
  */
 function computePermissions(role, isPublicAccess, user) {
-  // Public access (unauthenticated or no role) - read-only
+  // Public access (unauthenticated or no role) - read-only, no support
   if (isPublicAccess) {
     return {
       canView: true,
       canCreateFeedback: false,
       canCreateRoadmap: false,
-      canCreateSupport: false,
+      canCreateSupport: false, // Support is never public
       canComment: false,
       canManageSettings: false,
       canModerateContent: false,
@@ -211,7 +211,7 @@ function computePermissions(role, isPublicAccess, user) {
     canView: true,
     canCreateFeedback: isContributor,
     canCreateRoadmap: isStaff,
-    canCreateSupport: isContributor,
+    canCreateSupport: isContributor, // Support requires role
     canComment: isContributor,
     canManageSettings: isAdmin,
     canModerateContent: isStaff,

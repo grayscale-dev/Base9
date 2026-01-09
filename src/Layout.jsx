@@ -165,7 +165,8 @@ export default function Layout({ children, currentPageName }) {
 
   // Filter nav items based on permissions
   const visibleNavItems = navItems.filter(item => {
-    if (item.requiresSupport && !workspace?.support_enabled) return false;
+    // Hide support from public viewers entirely
+    if (item.requiresSupport && (isPublicViewing || !workspace?.support_enabled)) return false;
     return true;
   });
 
