@@ -47,6 +47,7 @@ export default function WorkspaceSettings() {
   
   // Settings state
   const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
   const [description, setDescription] = useState('');
   const [visibility, setVisibility] = useState('restricted');
   const [supportEnabled, setSupportEnabled] = useState(true);
@@ -54,6 +55,7 @@ export default function WorkspaceSettings() {
   const [logoUrl, setLogoUrl] = useState('');
   const [primaryColor, setPrimaryColor] = useState('#0f172a');
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [slugError, setSlugError] = useState('');
   
   // Access management
   const [members, setMembers] = useState([]);
@@ -79,6 +81,7 @@ export default function WorkspaceSettings() {
     setWorkspace(ws);
     setRole(storedRole);
     setName(ws.name);
+    setSlug(ws.slug);
     setDescription(ws.description || '');
     setVisibility(ws.visibility || 'restricted');
     setSupportEnabled(ws.support_enabled !== false);
@@ -104,13 +107,63 @@ export default function WorkspaceSettings() {
     }
   };
 
+  const validateSlug = (value) => {
+    // Reset error
+    setSlugError('');
+    
+    // Check length
+    if (value.length < 3 || value.length > 50) {
+      return 'Slug must be between 3 and 50 characters';
+    }
+    
+    // Check format: lowercase letters, numbers, hyphens only
+    if (!/^[a-z0-9-]+$/.test(value)) {
+      return 'Slug can only contain lowercase letters, numbers, and hyphens';
+    }
+    
+    // Check no leading/trailing hyphens
+    if (value.startsWith('-') || value.endsWith('-')) {
+      return 'Slug cannot start or end with a hyphen';
+    }
+    
+    // Check no consecutive hyphens
+    if (value.includes('--')) {
+      return 'Slug cannot contain consecutive hyphens';
+    }
+    
+    return null;
+  };
+
   const handleSaveSettings = async () => {
     if (!workspace) return;
+    
+    // Validate slug if changed
+    if (slug !== workspace.slug) {
+      const slugValidationError = validateSlug(slug);
+      if (slugValidationError) {
+        setSlugError(slugValidationError);
+        return;
+      }
+      
+      // Check uniqueness
+      try {
+        const existing = await base44.entities.Workspace.filter({ slug });
+        if (existing.length > 0 && existing[0].id !== workspace.id) {
+          setSlugError('This slug is already taken by another board');
+          return;
+        }
+      } catch (error) {
+        console.error('Failed to check slug uniqueness:', error);
+        setSlugError('Failed to validate slug. Please try again.');
+        return;
+      }
+    }
     
     setSaving(true);
     try {
       await base44.entities.Workspace.update(workspace.id, {
         name,
+        slug,
         description,
         visibility,
         support_enabled: supportEnabled,
@@ -120,11 +173,18 @@ export default function WorkspaceSettings() {
       });
       
       // Update session storage
-      const updatedWorkspace = { ...workspace, name, description, visibility, support_enabled: supportEnabled, settings, logo_url: logoUrl, primary_color: primaryColor };
+      const updatedWorkspace = { ...workspace, name, slug, description, visibility, support_enabled: supportEnabled, settings, logo_url: logoUrl, primary_color: primaryColor };
       sessionStorage.setItem('selectedWorkspace', JSON.stringify(updatedWorkspace));
+      sessionStorage.setItem('selectedWorkspaceId', updatedWorkspace.id);
       setWorkspace(updatedWorkspace);
+      
+      // If slug changed, navigate to new URL
+      if (slug !== workspace.slug) {
+        window.location.href = `/board/${slug}/feedback`;
+      }
     } catch (error) {
       console.error('Failed to save settings:', error);
+      alert('Failed to save settings. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -276,6 +336,25 @@ export default function WorkspaceSettings() {
                   onChange={(e) => setName(e.target.value)}
                   className="mt-1.5 max-w-md"
                 />
+              </div>
+              <div>
+                <Label>Board Slug</Label>
+                <Input 
+                  value={slug} 
+                  onChange={(e) => {
+                    const value = e.target.value.toLowerCase();
+                    setSlug(value);
+                    setSlugError('');
+                  }}
+                  className="mt-1.5 max-w-md font-mono"
+                  placeholder="my-board-slug"
+                />
+                {slugError && (
+                  <p className="text-xs text-red-600 mt-1">{slugError}</p>
+                )}
+                <p className="text-xs text-slate-500 mt-1">
+                  Used in the board URL. Lowercase letters, numbers, and hyphens only (3-50 chars).
+                </p>
               </div>
               <div>
                 <Label>Description</Label>
