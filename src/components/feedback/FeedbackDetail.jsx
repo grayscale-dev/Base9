@@ -60,6 +60,15 @@ export default function FeedbackDetail({
     setSubmitting(true);
     try {
       const user = await base44.auth.me();
+      
+      // Check if user has permission to reply
+      const isPublicAccess = sessionStorage.getItem('isPublicAccess') === 'true';
+      if (isPublicAccess) {
+        alert('Please login with proper permissions to post responses.');
+        setSubmitting(false);
+        return;
+      }
+      
       await base44.entities.FeedbackResponse.create({
         feedback_id: feedback.id,
         workspace_id: feedback.workspace_id,
@@ -72,6 +81,7 @@ export default function FeedbackDetail({
       onUpdate?.();
     } catch (error) {
       console.error('Failed to submit reply:', error);
+      alert('Failed to submit reply. Please ensure you have permission.');
     } finally {
       setSubmitting(false);
     }
@@ -304,33 +314,45 @@ export default function FeedbackDetail({
           </div>
 
           {/* Reply form */}
-          <div className="space-y-3">
-            <Textarea
-              value={replyContent}
-              onChange={(e) => setReplyContent(e.target.value)}
-              placeholder={isStaff ? "Write an official response..." : "Add a comment..."}
-              className="min-h-[100px]"
-            />
-            <div className="flex justify-between items-center">
-              {isStaff && (
-                <p className="text-xs text-slate-400">
-                  Your response will be labeled as "{workspaceName} Team"
-                </p>
-              )}
+          {sessionStorage.getItem('isPublicAccess') === 'true' ? (
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-6 text-center">
+              <p className="text-slate-600 mb-3">Login to post responses and engage with this feedback</p>
               <Button 
-                onClick={handleSubmitReply}
-                disabled={!replyContent.trim() || submitting}
-                className="ml-auto bg-slate-900 hover:bg-slate-800"
+                onClick={() => base44.auth.redirectToLogin(window.location.href)}
+                className="bg-slate-900 hover:bg-slate-800"
               >
-                {submitting ? 'Sending...' : (
-                  <>
-                    <Send className="h-4 w-4 mr-2" />
-                    {isStaff ? 'Post Official Response' : 'Submit'}
-                  </>
-                )}
+                Login to Respond
               </Button>
             </div>
-          </div>
+          ) : (
+            <div className="space-y-3">
+              <Textarea
+                value={replyContent}
+                onChange={(e) => setReplyContent(e.target.value)}
+                placeholder={isStaff ? "Write an official response..." : "Add a comment..."}
+                className="min-h-[100px]"
+              />
+              <div className="flex justify-between items-center">
+                {isStaff && (
+                  <p className="text-xs text-slate-400">
+                    Your response will be labeled as "{workspaceName} Team"
+                  </p>
+                )}
+                <Button 
+                  onClick={handleSubmitReply}
+                  disabled={!replyContent.trim() || submitting}
+                  className="ml-auto bg-slate-900 hover:bg-slate-800"
+                >
+                  {submitting ? 'Sending...' : (
+                    <>
+                      <Send className="h-4 w-4 mr-2" />
+                      {isStaff ? 'Post Official Response' : 'Submit'}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
