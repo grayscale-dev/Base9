@@ -148,8 +148,6 @@ export default function Roadmap() {
       </div>
     );
   }
-
-  const isPublicAccess = sessionStorage.getItem('isPublicAccess') === 'true';
   
   return (
     <div className="space-y-6">
