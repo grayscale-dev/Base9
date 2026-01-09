@@ -94,7 +94,7 @@ Deno.serve(async (req) => {
     const publicResponses = allResponses.filter(r => !r.is_internal_note);
 
     // Return whitelisted fields
-    return Response.json({
+    const response = Response.json({
       id: feedback.id,
       workspace_id: feedback.workspace_id,
       title: feedback.title,
