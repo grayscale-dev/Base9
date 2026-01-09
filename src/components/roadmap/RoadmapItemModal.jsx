@@ -23,6 +23,7 @@ import Badge from '@/components/common/Badge';
 import { format } from 'date-fns';
 import { base44 } from '@/api/base44Client';
 import { cn } from '@/lib/utils';
+import { useProfileGuard } from '@/components/auth/useProfileGuard';
 
 export default function RoadmapItemModal({ 
   item, 
@@ -34,6 +35,7 @@ export default function RoadmapItemModal({
   onSave,
   linkedFeedback = []
 }) {
+  const { guardAction, ProfileGuard } = useProfileGuard();
   const isNew = !item?.id;
   const [editing, setEditing] = useState(isNew);
   const [title, setTitle] = useState(item?.title || '');
@@ -78,22 +80,26 @@ export default function RoadmapItemModal({
     setSaving(true);
     try {
       if (isNew) {
-        await base44.entities.RoadmapItem.create({
+        // Use backend function to enforce auth + role + NAME_REQUIRED
+        await base44.functions.invoke('createRoadmapItem', {
           workspace_id: workspaceId,
           title,
           description,
           status,
           target_quarter: targetQuarter,
-          display_order: 0,
           visibility: 'public',
         });
       } else {
-        const oldStatus = item.status;
-        await base44.entities.RoadmapItem.update(item.id, {
-          title,
-          description,
-          status,
-          target_quarter: targetQuarter,
+        // Use backend function to enforce auth + role + NAME_REQUIRED
+        await base44.functions.invoke('updateRoadmapItem', {
+          item_id: item.id,
+          workspace_id: workspaceId,
+          updates: {
+            title,
+            description,
+            status,
+            target_quarter: targetQuarter,
+          }
         });
         
         // If checkbox is checked and status is shipped, create changelog entry
@@ -122,6 +128,9 @@ export default function RoadmapItemModal({
       onClose();
     } catch (error) {
       console.error('Failed to save:', error);
+      if (error.response?.data?.code === 'NAME_REQUIRED') {
+        alert('Please set your display name before creating or editing roadmap items.');
+      }
     } finally {
       setSaving(false);
     }
@@ -132,18 +141,21 @@ export default function RoadmapItemModal({
     
     setPostingUpdate(true);
     try {
-      const user = await base44.auth.me();
-      await base44.entities.RoadmapUpdate.create({
-        roadmap_item_id: item.id,
-        workspace_id: workspaceId,
-        content: updateContent,
-        author_id: user.id,
-        update_type: 'progress',
+      await guardAction(async () => {
+        // Use backend function to enforce auth + role + NAME_REQUIRED
+        await base44.functions.invoke('createRoadmapUpdate', {
+          roadmap_item_id: item.id,
+          workspace_id: workspaceId,
+          content: updateContent,
+          update_type: 'progress',
+        });
+        setUpdateContent('');
+        onSave?.();
       });
-      setUpdateContent('');
-      onSave?.();
     } catch (error) {
-      console.error('Failed to post update:', error);
+      if (error.message !== 'Profile completion cancelled') {
+        console.error('Failed to post update:', error);
+      }
     } finally {
       setPostingUpdate(false);
     }
@@ -164,8 +176,10 @@ export default function RoadmapItemModal({
   const quarters = ['Q1 2025', 'Q2 2025', 'Q3 2025', 'Q4 2025', 'Q1 2026', 'Q2 2026'];
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+    <>
+      <ProfileGuard />
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>{isNew ? 'New Roadmap Item' : (editing ? 'Edit Item' : item?.title)}</span>
@@ -354,7 +368,8 @@ export default function RoadmapItemModal({
             </>
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
