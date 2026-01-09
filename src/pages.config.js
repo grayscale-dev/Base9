@@ -1,5 +1,6 @@
 import About from './pages/About';
 import ApiDocs from './pages/ApiDocs';
+import Board from './pages/Board';
 import Changelog from './pages/Changelog';
 import Docs from './pages/Docs';
 import Feedback from './pages/Feedback';
@@ -10,13 +11,13 @@ import Roadmap from './pages/Roadmap';
 import Support from './pages/Support';
 import WorkspaceSettings from './pages/WorkspaceSettings';
 import Workspaces from './pages/Workspaces';
-import Board from './pages/Board';
 import __Layout from './Layout.jsx';
 
 
 export const PAGES = {
     "About": About,
     "ApiDocs": ApiDocs,
+    "Board": Board,
     "Changelog": Changelog,
     "Docs": Docs,
     "Feedback": Feedback,
@@ -27,7 +28,6 @@ export const PAGES = {
     "Support": Support,
     "WorkspaceSettings": WorkspaceSettings,
     "Workspaces": Workspaces,
-    "Board": Board,
 }
 
 export const pagesConfig = {

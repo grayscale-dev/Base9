@@ -62,21 +62,40 @@ export default function Feedback() {
         return;
       }
       
-      const feedback = await base44.entities.Feedback.filter(
-        { workspace_id: workspaceId },
-        '-created_date'
-      );
-      setFeedbackList(feedback);
+      // Use public endpoint if unauthenticated or public access
+      if (!user || isPublicAccess) {
+        const { data } = await base44.functions.invoke('publicGetFeedback', {
+          workspace_id: workspaceId
+        });
+        
+        if (data && data.items) {
+          setFeedbackList(data.items);
+          
+          // Response counts included in public API
+          const responseCounts = {};
+          data.items.forEach(item => {
+            responseCounts[item.id] = item.response_count || 0;
+          });
+          setResponses(responseCounts);
+        }
+      } else {
+        // Authenticated user with role
+        const feedback = await base44.entities.Feedback.filter(
+          { workspace_id: workspaceId },
+          '-created_date'
+        );
+        setFeedbackList(feedback);
 
-      // Load response counts
-      const allResponses = await base44.entities.FeedbackResponse.filter(
-        { workspace_id: workspaceId }
-      );
-      const responseCounts = {};
-      allResponses.forEach(r => {
-        responseCounts[r.feedback_id] = (responseCounts[r.feedback_id] || 0) + 1;
-      });
-      setResponses(responseCounts);
+        // Load response counts
+        const allResponses = await base44.entities.FeedbackResponse.filter(
+          { workspace_id: workspaceId }
+        );
+        const responseCounts = {};
+        allResponses.forEach(r => {
+          responseCounts[r.feedback_id] = (responseCounts[r.feedback_id] || 0) + 1;
+        });
+        setResponses(responseCounts);
+      }
     } catch (error) {
       console.error('Failed to load feedback:', error);
     } finally {
@@ -85,12 +104,24 @@ export default function Feedback() {
   };
 
   const loadFeedbackResponses = async (feedbackId) => {
-    const workspaceId = sessionStorage.getItem('selectedWorkspaceId');
-    const feedbackResponses = await base44.entities.FeedbackResponse.filter(
-      { feedback_id: feedbackId, workspace_id: workspaceId },
-      'created_date'
-    );
-    return feedbackResponses;
+    const workspaceId = workspace?.id;
+    
+    // Use public endpoint if unauthenticated or public access
+    if (!user || isPublicAccess) {
+      const { data } = await base44.functions.invoke('publicGetFeedbackDetail', {
+        feedback_id: feedbackId,
+        workspace_id: workspaceId
+      });
+      
+      return data?.responses || [];
+    } else {
+      // Authenticated user with role
+      const feedbackResponses = await base44.entities.FeedbackResponse.filter(
+        { feedback_id: feedbackId, workspace_id: workspaceId },
+        'created_date'
+      );
+      return feedbackResponses;
+    }
   };
 
   const handleFeedbackClick = async (feedback) => {
