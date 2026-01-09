@@ -33,6 +33,8 @@ export default function Layout({ children, currentPageName }) {
   const [workspaces, setWorkspaces] = useState([]);
   const [role, setRole] = useState('viewer');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isPublicViewing, setIsPublicViewing] = useState(false);
+  const [noAccessMessage, setNoAccessMessage] = useState(null);
 
   // Public pages that don't need auth or workspace context
   const publicPages = ['Home', 'About', 'Pricing'];
@@ -48,46 +50,126 @@ export default function Layout({ children, currentPageName }) {
       return;
     }
     
-    // Redirect to workspaces if no workspace is selected
-    if (needsWorkspace && !sessionStorage.getItem('selectedWorkspace')) {
-      navigate(createPageUrl('Workspaces'));
-      return;
-    }
     loadContext();
-  }, [currentPageName]);
+  }, [currentPageName, location.search]);
 
   const loadContext = async () => {
+    // Check for workspace slug in URL
+    const params = new URLSearchParams(location.search);
+    const slug = params.get('slug');
+    
+    // Try to authenticate
+    let currentUser = null;
+    let isAuthenticated = false;
+    
     try {
-      const currentUser = await base44.auth.me();
+      currentUser = await base44.auth.me();
       setUser(currentUser);
+      isAuthenticated = true;
+    } catch (error) {
+      // User not authenticated
+      isAuthenticated = false;
+    }
 
-      if (needsWorkspace) {
-        const storedWorkspace = sessionStorage.getItem('selectedWorkspace');
-        const storedRole = sessionStorage.getItem('currentRole');
-        
-        if (storedWorkspace) {
-          setWorkspace(JSON.parse(storedWorkspace));
-          setRole(storedRole || 'viewer');
-          
-          // Load all workspaces for switcher
-          const roles = await base44.entities.WorkspaceRole.filter({ user_id: currentUser.id });
-          if (roles.length > 0) {
-            const workspaceIds = [...new Set(roles.map(r => r.workspace_id))];
-            const wsData = await Promise.all(
-              workspaceIds.map(async (id) => {
-                const results = await base44.entities.Workspace.filter({ id });
-                return results[0];
-              })
-            );
-            setWorkspaces(wsData.filter(w => w && w.status === 'active'));
-          }
+    if (needsWorkspace) {
+      let targetWorkspace = null;
+      
+      // Priority 1: Load workspace by slug from URL
+      if (slug) {
+        try {
+          const workspaceResults = await base44.entities.Workspace.filter({ slug, status: 'active' });
+          targetWorkspace = workspaceResults[0];
+        } catch (error) {
+          console.error('Failed to load workspace by slug:', error);
         }
       }
-    } catch (error) {
-      console.error('Failed to load context:', error);
-      // If auth fails and we need workspace, redirect to workspaces page
-      if (needsWorkspace) {
-        navigate(createPageUrl('Workspaces'));
+      
+      // Priority 2: Load workspace from sessionStorage
+      if (!targetWorkspace) {
+        const storedWorkspace = sessionStorage.getItem('selectedWorkspace');
+        if (storedWorkspace) {
+          targetWorkspace = JSON.parse(storedWorkspace);
+        }
+      }
+      
+      // Handle workspace access
+      if (targetWorkspace) {
+        setWorkspace(targetWorkspace);
+        
+        // Check if private board and not authenticated
+        if (targetWorkspace.visibility === 'restricted' && !isAuthenticated) {
+          // Redirect to login with return URL
+          base44.auth.redirectToLogin(window.location.href);
+          return;
+        }
+        
+        // Public board or authenticated user
+        if (isAuthenticated) {
+          // Check user's role for this workspace
+          try {
+            const roles = await base44.entities.WorkspaceRole.filter({ 
+              workspace_id: targetWorkspace.id, 
+              user_id: currentUser.id 
+            });
+            
+            if (roles.length > 0) {
+              // User has a role - full access
+              const userRole = roles[0].role;
+              setRole(userRole);
+              setIsPublicViewing(false);
+              sessionStorage.setItem('selectedWorkspaceId', targetWorkspace.id);
+              sessionStorage.setItem('selectedWorkspace', JSON.stringify(targetWorkspace));
+              sessionStorage.setItem('currentRole', userRole);
+              sessionStorage.removeItem('isPublicAccess');
+              
+              // Check if user needs to set their name
+              if (!currentUser.full_name || currentUser.full_name.trim() === '') {
+                // Show name prompt (could be a modal)
+                console.log('User needs to set name');
+              }
+              
+              // Load all user workspaces for switcher
+              const allRoles = await base44.entities.WorkspaceRole.filter({ user_id: currentUser.id });
+              if (allRoles.length > 0) {
+                const workspaceIds = [...new Set(allRoles.map(r => r.workspace_id))];
+                const wsData = await Promise.all(
+                  workspaceIds.map(async (id) => {
+                    const results = await base44.entities.Workspace.filter({ id });
+                    return results[0];
+                  })
+                );
+                setWorkspaces(wsData.filter(w => w && w.status === 'active'));
+              }
+            } else {
+              // Authenticated but no role
+              if (targetWorkspace.visibility === 'public') {
+                // Public board - read-only access
+                setRole('viewer');
+                setIsPublicViewing(true);
+                setNoAccessMessage('You don\'t have permission to contribute to this board. Contact the admin to request access.');
+                sessionStorage.setItem('isPublicAccess', 'true');
+              } else {
+                // Private board - no access
+                setNoAccessMessage('Sorry, you don\'t have permission to access this board. Please contact the admin.');
+                setIsPublicViewing(false);
+              }
+            }
+          } catch (error) {
+            console.error('Failed to check user role:', error);
+          }
+        } else {
+          // Not authenticated - public viewing only
+          if (targetWorkspace.visibility === 'public') {
+            setRole('viewer');
+            setIsPublicViewing(true);
+            sessionStorage.setItem('isPublicAccess', 'true');
+          }
+        }
+      } else {
+        // No workspace found - redirect to workspaces page if authenticated
+        if (isAuthenticated) {
+          navigate(createPageUrl('Workspaces'));
+        }
       }
     }
   };
@@ -109,12 +191,33 @@ export default function Layout({ children, currentPageName }) {
     return currentPageName === page;
   };
 
-  const isAdmin = role === 'admin';
-  const isStaff = ['support', 'admin'].includes(role);
+  const isAdmin = role === 'admin' && !isPublicViewing;
+  const isStaff = ['support', 'admin'].includes(role) && !isPublicViewing;
 
   // No layout for public pages, workspaces hub, or join page
   if (['Home', 'About', 'Pricing', 'Workspaces', 'JoinWorkspace'].includes(currentPageName)) {
     return children;
+  }
+  
+  // Show permission error for authenticated users without access to private board
+  if (user && noAccessMessage && workspace?.visibility === 'restricted') {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
+          <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+            <X className="h-6 w-6 text-red-600" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Access Denied</h2>
+          <p className="text-slate-600 mb-6">{noAccessMessage}</p>
+          <Button 
+            onClick={() => navigate(createPageUrl('Workspaces'))}
+            className="bg-slate-900 hover:bg-slate-800"
+          >
+            Go to My Boards
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   // Filter nav items based on permissions
@@ -216,6 +319,23 @@ export default function Layout({ children, currentPageName }) {
 
             {/* Right: User menu & Admin links */}
             <div className="flex items-center gap-2">
+                {/* Login prompt for public viewers */}
+                {isPublicViewing && !user && (
+                  <Button 
+                    onClick={() => base44.auth.redirectToLogin(window.location.href)}
+                    className="bg-slate-900 hover:bg-slate-800 text-white"
+                  >
+                    Login to Contribute
+                  </Button>
+                )}
+                
+                {/* No access message for authenticated users without role */}
+                {isPublicViewing && user && noAccessMessage && (
+                  <div className="hidden md:block text-sm text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg">
+                    Read-only access
+                  </div>
+                )}
+                
                 {isAdmin && (
                   <div className="hidden md:flex items-center gap-1">
                     <Link to={createPageUrl('ApiDocs')}>
