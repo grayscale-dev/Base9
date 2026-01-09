@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { addCacheHeaders } from './rateLimiter.js';
 
 /**
  * Public API: Get changelog entries for a workspace
@@ -64,10 +65,13 @@ Deno.serve(async (req) => {
       tags: entry.tags || []
     }));
 
-    return Response.json({
+    const response = Response.json({
       items: publicEntries,
       total
     });
+    
+    // Cache for 5 minutes (changelog changes infrequently)
+    return addCacheHeaders(response, 300);
 
   } catch (error) {
     console.error('Public changelog fetch error:', error);

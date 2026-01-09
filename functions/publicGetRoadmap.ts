@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { addCacheHeaders } from './rateLimiter.js';
 
 /**
  * Public API: Get roadmap items for a workspace
@@ -70,9 +71,12 @@ Deno.serve(async (req) => {
       display_order: item.display_order || 0
     }));
 
-    return Response.json({
+    const response = Response.json({
       items: publicItems
     });
+    
+    // Cache for 3 minutes (roadmap list changes with item updates)
+    return addCacheHeaders(response, 180);
 
   } catch (error) {
     console.error('Public roadmap fetch error:', error);

@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { addCacheHeaders } from './rateLimiter.js';
 
 /**
  * Public API: Get documentation pages for a workspace
@@ -68,9 +69,12 @@ Deno.serve(async (req) => {
       order: page.order || 0
     }));
 
-    return Response.json({
+    const response = Response.json({
       pages: publicPages
     });
+    
+    // Cache for 5 minutes (doc structure changes infrequently)
+    return addCacheHeaders(response, 300);
 
   } catch (error) {
     console.error('Public docs fetch error:', error);

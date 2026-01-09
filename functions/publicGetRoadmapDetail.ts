@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { addCacheHeaders } from './rateLimiter.js';
 
 /**
  * Public API: Get single roadmap item details
@@ -70,7 +71,7 @@ Deno.serve(async (req) => {
     }, '-created_date');
 
     // Return whitelisted fields
-    return Response.json({
+    const response = Response.json({
       id: item.id,
       workspace_id: item.workspace_id,
       title: item.title,
@@ -88,6 +89,9 @@ Deno.serve(async (req) => {
         author_label: `${workspaces[0].name} Team`
       }))
     });
+    
+    // Cache for 5 minutes (roadmap items change less frequently)
+    return addCacheHeaders(response, 300);
 
   } catch (error) {
     console.error('Public roadmap detail fetch error:', error);

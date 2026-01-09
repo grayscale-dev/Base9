@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { addCacheHeaders } from './rateLimiter.js';
 
 /**
  * Public API: Get single doc page with full content
@@ -58,7 +59,7 @@ Deno.serve(async (req) => {
     const page = pages[0];
 
     // Return whitelisted fields including content
-    return Response.json({
+    const response = Response.json({
       id: page.id,
       workspace_id: page.workspace_id,
       parent_id: page.parent_id || null,
@@ -69,6 +70,9 @@ Deno.serve(async (req) => {
       type: page.type || 'page',
       order: page.order || 0
     });
+    
+    // Cache for 5 minutes (docs change infrequently)
+    return addCacheHeaders(response, 300);
 
   } catch (error) {
     console.error('Public doc detail fetch error:', error);
