@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { boardUrl } from '@/components/utils/boardUrl';
 
 /**
  * Legacy route redirect for /Roadmap
@@ -13,7 +14,7 @@ export default function RoadmapLegacy() {
     
     if (workspace) {
       const ws = JSON.parse(workspace);
-      navigate(`/board/${ws.slug}/roadmap`, { replace: true });
+      navigate(boardUrl(ws.slug, 'roadmap'), { replace: true });
     } else {
       navigate('/', { replace: true });
     }

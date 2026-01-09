@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { boardUrl } from '@/components/utils/boardUrl';
 
 /**
  * Legacy route redirect for /Feedback
@@ -14,7 +15,7 @@ export default function FeedbackLegacy() {
     if (workspace) {
       const ws = JSON.parse(workspace);
       // Redirect to canonical board-scoped route
-      navigate(`/board/${ws.slug}/feedback`, { replace: true });
+      navigate(boardUrl(ws.slug, 'feedback'), { replace: true });
     } else {
       // No board context - show error or redirect to home
       navigate('/', { replace: true });
