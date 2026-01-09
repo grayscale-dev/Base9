@@ -36,39 +36,19 @@ export default function Changelog() {
   });
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const slug = params.get('slug');
+    // Context is set by Board router via sessionStorage
+    const storedWorkspace = sessionStorage.getItem('selectedWorkspace');
+    const storedRole = sessionStorage.getItem('currentRole');
     
-    if (slug) {
-      loadWorkspaceBySlug(slug);
-    } else {
-      const storedWorkspace = sessionStorage.getItem('selectedWorkspace');
-      const storedRole = sessionStorage.getItem('currentRole');
-      
-      if (!storedWorkspace) {
-        navigate(createPageUrl('Workspaces'));
-        return;
-      }
-      
-      setWorkspace(JSON.parse(storedWorkspace));
-      setRole(storedRole || 'viewer');
-      loadChangelog();
+    if (!storedWorkspace) {
+      navigate(createPageUrl('Home'));
+      return;
     }
+    
+    setWorkspace(JSON.parse(storedWorkspace));
+    setRole(storedRole || 'viewer');
+    loadChangelog();
   }, []);
-  
-  const loadWorkspaceBySlug = async (slug) => {
-    try {
-      const workspaces = await base44.entities.Workspace.filter({ slug });
-      if (workspaces[0]) {
-        setWorkspace(workspaces[0]);
-        const storedRole = sessionStorage.getItem('currentRole') || 'viewer';
-        setRole(storedRole);
-        loadChangelog(workspaces[0].id);
-      }
-    } catch (error) {
-      console.error('Failed to load workspace:', error);
-    }
-  };
 
   const loadChangelog = async (workspaceIdOverride = null) => {
     try {

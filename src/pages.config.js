@@ -10,6 +10,7 @@ import Roadmap from './pages/Roadmap';
 import Support from './pages/Support';
 import WorkspaceSettings from './pages/WorkspaceSettings';
 import Workspaces from './pages/Workspaces';
+import Board from './pages/Board';
 import __Layout from './Layout.jsx';
 
 
@@ -26,6 +27,7 @@ export const PAGES = {
     "Support": Support,
     "WorkspaceSettings": WorkspaceSettings,
     "Workspaces": Workspaces,
+    "Board": Board,
 }
 
 export const pagesConfig = {

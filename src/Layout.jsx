@@ -54,9 +54,8 @@ export default function Layout({ children, currentPageName }) {
   }, [currentPageName, location.search]);
 
   const loadContext = async () => {
-    // Check for workspace slug in URL
-    const params = new URLSearchParams(location.search);
-    const slug = params.get('slug');
+    // NEW FLOW: Context is set by Board router via sessionStorage
+    // We just read it here for layout rendering
     
     // Try to authenticate
     let currentUser = null;
@@ -72,103 +71,46 @@ export default function Layout({ children, currentPageName }) {
     }
 
     if (needsWorkspace) {
-      let targetWorkspace = null;
+      // Read workspace context from sessionStorage (set by Board router)
+      const storedWorkspace = sessionStorage.getItem('selectedWorkspace');
+      const storedRole = sessionStorage.getItem('currentRole');
+      const storedIsPublicAccess = sessionStorage.getItem('isPublicAccess') === 'true';
       
-      // Priority 1: Load workspace by slug from URL
-      if (slug) {
-        try {
-          const workspaceResults = await base44.entities.Workspace.filter({ slug, status: 'active' });
-          targetWorkspace = workspaceResults[0];
-        } catch (error) {
-          console.error('Failed to load workspace by slug:', error);
-        }
-      }
-      
-      // Priority 2: Load workspace from sessionStorage
-      if (!targetWorkspace) {
-        const storedWorkspace = sessionStorage.getItem('selectedWorkspace');
-        if (storedWorkspace) {
-          targetWorkspace = JSON.parse(storedWorkspace);
-        }
-      }
-      
-      // Handle workspace access
-      if (targetWorkspace) {
-        setWorkspace(targetWorkspace);
-        
-        // Check if private board and not authenticated
-        if (targetWorkspace.visibility === 'restricted' && !isAuthenticated) {
-          // Redirect to login with return URL
-          base44.auth.redirectToLogin(window.location.href);
-          return;
-        }
-        
-        // Public board or authenticated user
-        if (isAuthenticated) {
-          // Check user's role for this workspace
-          try {
-            const roles = await base44.entities.WorkspaceRole.filter({ 
-              workspace_id: targetWorkspace.id, 
-              user_id: currentUser.id 
-            });
-            
-            if (roles.length > 0) {
-              // User has a role - full access
-              const userRole = roles[0].role;
-              setRole(userRole);
-              setIsPublicViewing(false);
-              sessionStorage.setItem('selectedWorkspaceId', targetWorkspace.id);
-              sessionStorage.setItem('selectedWorkspace', JSON.stringify(targetWorkspace));
-              sessionStorage.setItem('currentRole', userRole);
-              sessionStorage.removeItem('isPublicAccess');
-              
-              // Check if user needs to set their name
-              if (!currentUser.full_name || currentUser.full_name.trim() === '') {
-                // Show name prompt (could be a modal)
-                console.log('User needs to set name');
-              }
-              
-              // Load all user workspaces for switcher
-              const allRoles = await base44.entities.WorkspaceRole.filter({ user_id: currentUser.id });
-              if (allRoles.length > 0) {
-                const workspaceIds = [...new Set(allRoles.map(r => r.workspace_id))];
-                const wsData = await Promise.all(
-                  workspaceIds.map(async (id) => {
-                    const results = await base44.entities.Workspace.filter({ id });
-                    return results[0];
-                  })
-                );
-                setWorkspaces(wsData.filter(w => w && w.status === 'active'));
-              }
-            } else {
-              // Authenticated but no role
-              if (targetWorkspace.visibility === 'public') {
-                // Public board - read-only access
-                setRole('viewer');
-                setIsPublicViewing(true);
-                setNoAccessMessage('You don\'t have permission to contribute to this board. Contact the admin to request access.');
-                sessionStorage.setItem('isPublicAccess', 'true');
-              } else {
-                // Private board - no access
-                setNoAccessMessage('Sorry, you don\'t have permission to access this board. Please contact the admin.');
-                setIsPublicViewing(false);
-              }
-            }
-          } catch (error) {
-            console.error('Failed to check user role:', error);
-          }
-        } else {
-          // Not authenticated - public viewing only
-          if (targetWorkspace.visibility === 'public') {
-            setRole('viewer');
-            setIsPublicViewing(true);
-            sessionStorage.setItem('isPublicAccess', 'true');
-          }
-        }
-      } else {
-        // No workspace found - redirect to workspaces page if authenticated
+      if (!storedWorkspace) {
+        // No workspace context - redirect to home or workspaces
         if (isAuthenticated) {
           navigate(createPageUrl('Workspaces'));
+        } else {
+          navigate(createPageUrl('Home'));
+        }
+        return;
+      }
+      
+      const targetWorkspace = JSON.parse(storedWorkspace);
+      setWorkspace(targetWorkspace);
+      setRole(storedRole || 'viewer');
+      setIsPublicViewing(storedIsPublicAccess);
+      
+      if (storedIsPublicAccess) {
+        setNoAccessMessage('You don\'t have permission to contribute to this board. Contact the admin to request access.');
+      }
+      
+      // Load user workspaces for switcher (if authenticated with role)
+      if (isAuthenticated && !storedIsPublicAccess) {
+        try {
+          const allRoles = await base44.entities.WorkspaceRole.filter({ user_id: currentUser.id });
+          if (allRoles.length > 0) {
+            const workspaceIds = [...new Set(allRoles.map(r => r.workspace_id))];
+            const wsData = await Promise.all(
+              workspaceIds.map(async (id) => {
+                const results = await base44.entities.Workspace.filter({ id });
+                return results[0];
+              })
+            );
+            setWorkspaces(wsData.filter(w => w && w.status === 'active'));
+          }
+        } catch (error) {
+          console.error('Failed to load user workspaces:', error);
         }
       }
     }

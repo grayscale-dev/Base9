@@ -34,50 +34,25 @@ export default function Support() {
   const [viewMode, setViewMode] = useState('all'); // 'my' or 'all' for staff
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const slug = params.get('slug');
+    // Context is set by Board router via sessionStorage
+    const storedWorkspace = sessionStorage.getItem('selectedWorkspace');
+    const storedRole = sessionStorage.getItem('currentRole');
     
-    if (slug) {
-      loadWorkspaceBySlug(slug);
-    } else {
-      const storedWorkspace = sessionStorage.getItem('selectedWorkspace');
-      const storedRole = sessionStorage.getItem('currentRole');
-      
-      if (!storedWorkspace) {
-        navigate(createPageUrl('Workspaces'));
-        return;
-      }
-      
-      const ws = JSON.parse(storedWorkspace);
-      if (!ws.support_enabled) {
-        navigate(createPageUrl('Feedback'));
-        return;
-      }
-      
-      setWorkspace(ws);
-      setRole(storedRole || 'viewer');
-      loadData();
+    if (!storedWorkspace) {
+      navigate(createPageUrl('Home'));
+      return;
     }
+    
+    const ws = JSON.parse(storedWorkspace);
+    if (!ws.support_enabled) {
+      navigate(createPageUrl('Feedback'));
+      return;
+    }
+    
+    setWorkspace(ws);
+    setRole(storedRole || 'viewer');
+    loadData();
   }, []);
-  
-  const loadWorkspaceBySlug = async (slug) => {
-    try {
-      const workspaces = await base44.entities.Workspace.filter({ slug });
-      if (workspaces[0]) {
-        const ws = workspaces[0];
-        if (!ws.support_enabled) {
-          navigate(createPageUrl('Feedback') + `?slug=${slug}`);
-          return;
-        }
-        setWorkspace(ws);
-        const storedRole = sessionStorage.getItem('currentRole') || 'viewer';
-        setRole(storedRole);
-        loadData(ws.id);
-      }
-    } catch (error) {
-      console.error('Failed to load workspace:', error);
-    }
-  };
 
   const loadData = async (workspaceIdOverride = null) => {
     try {
