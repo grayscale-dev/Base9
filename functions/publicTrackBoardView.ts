@@ -23,43 +23,24 @@ import { applyRateLimit, addNoCacheHeaders, RATE_LIMITS } from './rateLimiter.js
  * - Used for basic analytics only
  */
 
-// In-memory rate limit cache (5 minute window)
-const viewCache = new Map();
-const RATE_LIMIT_WINDOW = 5 * 60 * 1000; // 5 minutes
-
 Deno.serve(async (req) => {
   try {
-    const base44 = createClientFromRequest(req);
     const payload = await req.json();
     const { slug, referrer, session_id } = payload;
-
+    
     if (!slug) {
       return Response.json({ error: 'slug is required' }, { status: 400 });
     }
-
-    // Rate limiting check
-    if (session_id) {
-      const cacheKey = `${session_id}:${slug}`;
-      const lastView = viewCache.get(cacheKey);
-      
-      if (lastView && Date.now() - lastView < RATE_LIMIT_WINDOW) {
-        // Already tracked recently, skip
-        return Response.json({ success: true, cached: true });
-      }
-      
-      // Update cache
-      viewCache.set(cacheKey, Date.now());
-      
-      // Clean up old entries periodically
-      if (viewCache.size > 10000) {
-        const now = Date.now();
-        for (const [key, timestamp] of viewCache.entries()) {
-          if (now - timestamp > RATE_LIMIT_WINDOW) {
-            viewCache.delete(key);
-          }
-        }
-      }
-    }
+    
+    // Apply strict rate limiting for analytics
+    // Both per-session (1 view per board per 5 min) AND per-IP (60 req/min)
+    const rateLimitResponse = applyRateLimit(req, RATE_LIMITS.ANALYTICS, {
+      sessionId: session_id,
+      identifier: slug,
+    });
+    if (rateLimitResponse) return rateLimitResponse;
+    
+    const base44 = createClientFromRequest(req);
 
     // Fetch workspace by slug
     const workspaces = await base44.asServiceRole.entities.Workspace.filter({ 
@@ -79,10 +60,13 @@ Deno.serve(async (req) => {
     // For MVP, we can skip actual storage and just return success
     // This allows the infrastructure to be in place without requiring a new entity
 
-    return Response.json({ 
+    const response = Response.json({ 
       success: true,
       workspace_id: workspace.id 
     });
+    
+    // Never cache analytics tracking
+    return addNoCacheHeaders(response);
 
   } catch (error) {
     console.error('Public board view tracking error:', error);
