@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { applyRateLimit, addCacheHeaders, RATE_LIMITS } from './rateLimiter.js';
 
 /**
  * Public API: Get single feedback item details with full comment thread
@@ -47,6 +48,10 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
  */
 Deno.serve(async (req) => {
   try {
+    // Apply rate limiting (60 req/min per IP)
+    const rateLimitResponse = applyRateLimit(req, RATE_LIMITS.PUBLIC_API);
+    if (rateLimitResponse) return rateLimitResponse;
+    
     const base44 = createClientFromRequest(req);
     const payload = await req.json();
     const { feedback_id, workspace_id } = payload;
@@ -118,6 +123,9 @@ Deno.serve(async (req) => {
           : anonymizeEmail(r.author_email || feedback.submitter_email)
       }))
     });
+    
+    // Cache for 3 minutes (details change with new comments)
+    return addCacheHeaders(response, 180);
 
   } catch (error) {
     console.error('Public feedback detail fetch error:', error);

@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { applyRateLimit, addNoCacheHeaders, RATE_LIMITS } from './rateLimiter.js';
 
 /**
  * Public API: Track board view (analytics)

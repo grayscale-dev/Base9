@@ -1,4 +1,5 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.6';
+import { applyRateLimit, addCacheHeaders, RATE_LIMITS } from './rateLimiter.js';
 
 /**
  * Public API: Get feedback items for a workspace
