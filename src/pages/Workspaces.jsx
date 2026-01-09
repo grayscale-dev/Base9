@@ -100,12 +100,12 @@ export default function Workspaces() {
   };
 
   const handleSelectWorkspace = (workspace) => {
-    // Store selected workspace and navigate
+    // Store selected workspace and navigate to canonical board route
     const role = workspaceRoles.find(r => r.workspace_id === workspace.id);
     sessionStorage.setItem('selectedWorkspaceId', workspace.id);
     sessionStorage.setItem('selectedWorkspace', JSON.stringify(workspace));
     sessionStorage.setItem('currentRole', role?.role || 'viewer');
-    navigate(createPageUrl('Feedback'));
+    navigate(`/board/${workspace.slug}/feedback`);
   };
 
   const handleJoinBoard = async () => {
