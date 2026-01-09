@@ -36,22 +36,47 @@ export default function Changelog() {
   });
 
   useEffect(() => {
-    const storedWorkspace = sessionStorage.getItem('selectedWorkspace');
-    const storedRole = sessionStorage.getItem('currentRole');
+    const params = new URLSearchParams(window.location.search);
+    const slug = params.get('slug');
     
-    if (!storedWorkspace) {
-      navigate(createPageUrl('Workspaces'));
-      return;
+    if (slug) {
+      loadWorkspaceBySlug(slug);
+    } else {
+      const storedWorkspace = sessionStorage.getItem('selectedWorkspace');
+      const storedRole = sessionStorage.getItem('currentRole');
+      
+      if (!storedWorkspace) {
+        navigate(createPageUrl('Workspaces'));
+        return;
+      }
+      
+      setWorkspace(JSON.parse(storedWorkspace));
+      setRole(storedRole || 'viewer');
+      loadChangelog();
     }
-    
-    setWorkspace(JSON.parse(storedWorkspace));
-    setRole(storedRole || 'viewer');
-    loadChangelog();
   }, []);
-
-  const loadChangelog = async () => {
+  
+  const loadWorkspaceBySlug = async (slug) => {
     try {
-      const workspaceId = sessionStorage.getItem('selectedWorkspaceId');
+      const workspaces = await base44.entities.Workspace.filter({ slug });
+      if (workspaces[0]) {
+        setWorkspace(workspaces[0]);
+        const storedRole = sessionStorage.getItem('currentRole') || 'viewer';
+        setRole(storedRole);
+        loadChangelog(workspaces[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to load workspace:', error);
+    }
+  };
+
+  const loadChangelog = async (workspaceIdOverride = null) => {
+    try {
+      const workspaceId = workspaceIdOverride || sessionStorage.getItem('selectedWorkspaceId');
+      if (!workspaceId) {
+        setLoading(false);
+        return;
+      }
       const changelogEntries = await base44.entities.ChangelogEntry.filter(
         { workspace_id: workspaceId, visibility: 'public' },
         '-release_date'
@@ -133,10 +158,18 @@ export default function Changelog() {
     );
   }
 
-  const isAdmin = role === 'admin';
+  const isPublicAccess = sessionStorage.getItem('isPublicAccess') === 'true';
+  const isAdmin = role === 'admin' && !isPublicAccess;
 
   return (
     <div className="space-y-6">
+      {isPublicAccess && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
+          <p className="text-blue-900">
+            👀 Viewing changelog in read-only mode. <button onClick={() => base44.auth.redirectToLogin(window.location.href)} className="underline font-medium">Login</button> to access more features.
+          </p>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
