@@ -215,7 +215,7 @@ export default function WorkspaceSettings() {
       setNewMemberRole('viewer');
       setShowAddMember(false);
       loadAccessData(workspace.id);
-      alert(`Access granted to ${newMemberEmail}. They can now log in to access this board.`);
+      alert(`Access granted to ${newMemberEmail}. They can log in to this board with their new role.`);
     } catch (error) {
       console.error('Failed to add member:', error);
       alert('Failed to grant access. Please try again.');
@@ -519,7 +519,7 @@ export default function WorkspaceSettings() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Email Domain Rules</CardTitle>
-                <CardDescription>Automatically grant access based on email patterns</CardDescription>
+                <CardDescription>Automatically assign roles when users log in with matching emails</CardDescription>
               </div>
               <Button variant="outline" onClick={() => setShowAddRule(true)}>
                 <Plus className="h-4 w-4 mr-2" />
@@ -576,11 +576,11 @@ export default function WorkspaceSettings() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Individual Access</CardTitle>
-                <CardDescription>Manage specific user access</CardDescription>
+                <CardDescription>Grant specific roles to team members</CardDescription>
               </div>
               <Button variant="outline" onClick={() => setShowAddMember(true)}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Member
+                Grant Access
               </Button>
             </CardHeader>
             <CardContent>
@@ -661,17 +661,20 @@ export default function WorkspaceSettings() {
       <Dialog open={showAddMember} onOpenChange={setShowAddMember}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Member</DialogTitle>
+            <DialogTitle>Grant Access</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Email</Label>
+              <Label>Email Address</Label>
               <Input 
                 value={newMemberEmail}
                 onChange={(e) => setNewMemberEmail(e.target.value)}
                 placeholder="user@example.com"
                 className="mt-1.5"
               />
+              <p className="text-xs text-slate-500 mt-1">
+                User must log in with this email to receive their role.
+              </p>
             </div>
             <div>
               <Label>Role</Label>
@@ -691,7 +694,7 @@ export default function WorkspaceSettings() {
           <DialogFooter>
             <Button variant="ghost" onClick={() => setShowAddMember(false)}>Cancel</Button>
             <Button onClick={handleAddMember} className="bg-slate-900 hover:bg-slate-800">
-              Add Member
+              Grant Access
             </Button>
           </DialogFooter>
         </DialogContent>
