@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, SlidersHorizontal } from 'lucide-react';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -161,6 +162,7 @@ export default function Feedback() {
   }
 
   return (
+    <ProtectedRoute>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -262,6 +264,7 @@ export default function Feedback() {
           />
         </DialogContent>
       </Dialog>
-    </div>
-  );
-}
+      </div>
+      </ProtectedRoute>
+      );
+      }

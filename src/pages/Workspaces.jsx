@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Folder, Plus, LogOut, User, Link as LinkIcon } from 'lucide-react';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import {
   Dialog,
   DialogContent,
@@ -199,6 +200,7 @@ export default function Workspaces() {
   }
 
   return (
+    <ProtectedRoute>
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <header className="bg-white border-b border-slate-200">
