@@ -18,7 +18,7 @@ export default function Pricing() {
   const services = ['Feedback', 'Roadmap', 'Changelog', 'Docs', 'Support'];
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-amber-200/40 blur-3xl" />
         <div className="absolute top-40 -left-40 h-[28rem] w-[28rem] rounded-full bg-cyan-200/40 blur-3xl" />
