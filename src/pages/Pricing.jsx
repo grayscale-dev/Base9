@@ -27,7 +27,7 @@ export default function Pricing() {
   const daysPerMonth = 30;
 
   const selectedCount = enabledServices.length;
-  const serviceCost = selectedCount * 5;
+  const serviceCost = selectedCount * 10;
   const dailyOverage = Math.max(0, Number(dailyInteractions) - includedDaily);
   const usageCost = dailyOverage * overageRate * daysPerMonth;
   const totalCost = serviceCost + usageCost;
@@ -41,7 +41,7 @@ export default function Pricing() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 text-slate-900 overflow-x-hidden relative">
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute -top-32 -right-32 h-96 w-96 rounded-full bg-amber-200/40 blur-3xl" />
         <div className="absolute top-40 -left-40 h-[28rem] w-[28rem] rounded-full bg-cyan-200/40 blur-3xl" />
@@ -87,7 +87,7 @@ export default function Pricing() {
                 <h2 className="text-2xl font-semibold">Core pricing</h2>
               </div>
               <p className="text-slate-600 mt-3">
-                After the 7-day trial, each enabled service is $5 per month.
+                After the 7-day trial, each enabled service is $10 per month.
               </p>
               <div className="mt-6 grid gap-4">
                 {services.map((service) => (
@@ -96,7 +96,7 @@ export default function Pricing() {
                     className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3"
                   >
                     <span className="font-medium">{service}</span>
-                    <span className="text-sm text-slate-500">$5 / month</span>
+                    <span className="text-sm text-slate-500">$10 / month</span>
                   </div>
                 ))}
               </div>
