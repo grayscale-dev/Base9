@@ -83,12 +83,16 @@ export function BoardProvider({ children }) {
           workspaceResponse = await base44.functions.invoke('publicGetBoard', { slug });
         } catch (publicError) {
           const status = publicError?.status || publicError?.response?.status;
-          if (status === 403) {
-            const results = await base44.entities.Board.filter({ slug });
-            workspaceResponse = { data: results[0] || null };
-          } else {
-            throw publicError;
+          if (status === 401) {
+            await base44.auth.logout();
+            setState(prev => ({ ...prev, loading: false }));
+            return;
           }
+          if (status === 403) {
+            setState(prev => ({ ...prev, loading: false }));
+            return;
+          }
+          throw publicError;
         }
 
         if (!workspaceResponse?.data) {

@@ -83,6 +83,16 @@ export default function Board() {
           workspace = data;
         } catch (publicError) {
           const status = publicError?.status || publicError?.response?.status;
+          if (status === 401) {
+            try {
+              await base44.auth.logout();
+            } catch {
+              // ignore logout errors
+            }
+            const returnUrl = window.location.pathname;
+            base44.auth.redirectToLogin(window.location.origin + returnUrl);
+            return;
+          }
           if (status === 403) {
             try {
               await base44.auth.me();

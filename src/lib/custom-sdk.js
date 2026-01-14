@@ -842,9 +842,44 @@ export function createCustomClient() {
       invoke: async (name, payload = {}, options = {}) => {
         const { data: sessionData } = await supabase.auth.getSession();
         const accessToken = sessionData?.session?.access_token;
+        let shouldAttachToken = Boolean(accessToken);
+
+        if (accessToken) {
+          try {
+            const [, payloadSegment] = accessToken.split(".");
+            const normalized = payloadSegment
+              ? payloadSegment.replace(/-/g, "+").replace(/_/g, "/")
+              : "";
+            const base64 = normalized
+              ? normalized.padEnd(
+                  normalized.length + ((4 - (normalized.length % 4)) % 4),
+                  "="
+                )
+              : "";
+            const decodeBase64 = (value) => {
+              if (typeof atob === "function") {
+                return atob(value);
+              }
+              return Buffer.from(value, "base64").toString("binary");
+            };
+            const decoded = JSON.parse(decodeBase64(base64));
+            const issuer = decoded?.iss || "";
+            const tokenExp = decoded?.exp ? Number(decoded.exp) * 1000 : null;
+            const tokenExpired = tokenExp ? tokenExp < Date.now() : false;
+            const expectedHost = new URL(supabaseUrl).host;
+            const issuerHost = issuer ? new URL(issuer).host : "";
+
+            if (tokenExpired || (issuerHost && issuerHost !== expectedHost)) {
+              shouldAttachToken = false;
+              await supabase.auth.signOut();
+            }
+          } catch (error) {
+            console.warn("Unable to validate auth token:", error);
+          }
+        }
         const headers = {
           ...options.headers,
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+          ...(shouldAttachToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         };
         const { data, error } = await supabase.functions.invoke(name, {
           body: payload,
