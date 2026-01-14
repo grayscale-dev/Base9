@@ -89,3 +89,4 @@ The workflow lives at: `.github/workflows/report-usage.yml`.
 
 Billing checkout is gated behind `beta_access_granted_at` on `billing_customers`.
 Admins can toggle this in the Billing UI (switch added in `src/pages/Billing.jsx`).
+
